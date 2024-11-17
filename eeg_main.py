@@ -5,6 +5,7 @@ import collections
 import time
 from os import walk
 import os
+from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -26,25 +27,17 @@ from models.baseline_models import *
 import networkx as nx
 import json
 
+import mne
+
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
-seizure_type_data = collections.namedtuple('seizure_type_data', ['patient_id','seizure_type', 'data'])
 
-
-# NOTE: FIXED, Order cannot be changed!!!!!!!!!
-s_types = {'FNSZ': 1836,'GNSZ': 583, 'CPSZ': 367,'ABSZ': 99,  'TNSZ': 62, 'SPSZ': 52, 'TCSZ': 48}
-label_dict = {}
-number_label_dict = {}
-for i, k in enumerate(s_types.keys()):
-    label_dict[k] = i
-    number_label_dict[i] = k
-print('labels:', label_dict)
 
 def load_tuh_data(args, feature_name=""):
 
-    feature = np.load(os.path.join(args.data_path, f"seizure_x{feature_name}.npy"))
-    label = np.load(os.path.join(args.data_path, f"seizure_y{feature_name}.npy"))
+    feature = np.load(os.path.join(args.data_path, f"mwl_x{feature_name}.npy"))
+    label = np.load(os.path.join(args.data_path, f"mwl_y{feature_name}.npy"))
     print('load seizure data, shape:', feature.shape, label.shape)
 
 
@@ -53,12 +46,15 @@ def load_tuh_data(args, feature_name=""):
         shuffled_index = np.load('shuffled_index.npy')
     else:
         # shuffle:
-        shuffled_index = np.random.permutation(np.arange(feature.shape[0]))
-    print('shuffled_index:', shuffled_index)
+        print('WARNING: shuffling takes a long time, skip it at the moment, add it later !!!!!!!')
+        # shuffled_index = np.random.permutation(np.arange(feature.shape[0]))
+    # print('shuffled_index:', shuffled_index)
     
-    
-    feature = feature[shuffled_index]
-    label = label[shuffled_index]
+   
+    # print('shuffling features ...')
+    # feature = feature[shuffled_index]
+    # label = label[shuffled_index]
+    # print('...shuffling finished!')
 
 
     # train, test:
@@ -69,13 +65,12 @@ def load_tuh_data(args, feature_name=""):
             label_dict[l] = []
         label_dict[l].append(i)
 
-
     # Filter the MYSZ:
 
-    # take 1/3 as test set for each seizure type.
+    # take 1/6 as test set for each seizure type.
     train_x, train_y, test_x, test_y = [],[],[],[]
     for k, v in label_dict.items():
-        test_size = int(len(v)/3)
+        test_size = int(len(v)/6)
         train_x.append(feature[v[test_size:]])
         train_y.append(label[v[test_size:]])
         test_x.append(feature[v[:test_size]])
@@ -97,7 +92,7 @@ def load_tuh_data(args, feature_name=""):
 
 
 def generate_tuh_data(args, file_name=""):
-    """ generate data for training or ploting functional connectivity.
+    """ generate data for training or plotting functional connectivity.
     """
     data_path = args.data_path
 
@@ -111,10 +106,13 @@ def generate_tuh_data(args, file_name=""):
         y_f_data = []
         min_len = 10000
         freq_file_name = f"fft_seizures_wl1_ws_0.25_sf_250_fft_min_1_fft_max_{freq}"
+        print(os.path.join(data_path, freq_file_name))
         dir, _, files = next(walk(os.path.join(data_path, freq_file_name)))
         for i, name in enumerate(files):
             fft_data = pickle.load(open(os.path.join(dir,name), 'rb'))
-            if fft_data.seizure_type == 'MYSZ':
+            if fft_data.seizure_type.upper() == 'MYSZ':
+                continue
+            if fft_data.seizure_type.upper() == 'BCKG':
                 continue
             if fft_data.data.shape[0] < 34:
                 continue
@@ -122,7 +120,7 @@ def generate_tuh_data(args, file_name=""):
                 min_len = fft_data.data.shape[0]
                 
             x_f_data.append(fft_data.data)
-            y_f_data.append(label_dict[fft_data.seizure_type])
+            y_f_data.append(label_dict[fft_data.seizure_type.upper()])
         print('min len:', min_len)
         x_f_data = [d[:min_len,...] for d in x_f_data]
         x_f_data = np.stack(x_f_data, axis=0)
@@ -140,6 +138,62 @@ def generate_tuh_data(args, file_name=""):
     np.save(f'seizure_y_{file_name}.npy', y_data[0])
     print('y data shape:', y_data[0].shape)
     print('save done!')
+    
+def generate_mantis_data(args, file_name="mantis"):
+    """
+    Generate data for training or plotting functional connectivity, 
+    similar to generate_tuh_data, but adapted for MANTIS data.
+    """
+    
+    data_path = args.data_path
+    
+    x_data = []
+    y_data = []
+    
+    x_f_data = []
+    y_f_data = []
+    min_len = 10000
+    max_len = 0
+    
+    subjects = os.listdir(data_path)
+    subjects.sort()
+    
+    for subj in tqdm(subjects, desc="Processing subjects"):
+        sessions = os.listdir(os.path.join(data_path, subj))
+        sessions.sort()
+        
+        for se in sessions:
+            labels_df = pd.read_csv(os.path.join(data_path, subj, se, 'conditions.csv'))
+            fif_data_path = os.path.join(data_path, subj, se, 'samples_epo.fif')
+            epoched_data = mne.read_epochs(fif_data_path, verbose='CRITICAL').get_data()
+            epoched_data = np.fft.rfft(epoched_data, axis=-1)
+            
+            if epoched_data.shape[0] < 500:
+                continue
+            if epoched_data.shape[0] < min_len:
+                min_len = epoched_data.shape[0]
+            if epoched_data.shape[0]> max_len:
+                max_len = epoched_data.shape[0]
+                
+            x_f_data.append(epoched_data)
+            y_f_data.append(np.array([label_dict[l] for l in labels_df['label']]))
+    x_f_data = [d[:min_len,...] for d in x_f_data]
+    y_f_data = [d[:min_len,...] for d in y_f_data]
+    x_f_data = np.stack(x_f_data, axis=0)
+    y_f_data = np.stack(y_f_data, axis=0)
+    x_data.append(x_f_data)
+    y_data.append(y_f_data)
+    
+    print('prepare save!')
+    print('min_len: ', min_len)
+    print('max_len: ', max_len)
+    x_data = np.concatenate(x_data, axis=3)
+    print('x data shape:', x_data.shape)
+    np.save(f'seizure_x_{file_name}.npy', x_data)
+    np.save(f'seizure_y_{file_name}.npy', y_data[0])
+    print('y data shape:', y_data[0].shape)
+    print('save done!')
+
 
 def normalize_seizure_features(features):
     """inplace-norm
@@ -173,9 +227,11 @@ def init_adjs(args, index=0):
     adjs = []
    
     if args.adj_type == 'rand10':
-        adj_mx = eeg_util.generate_rand_adj(0.1*(index+1), N=20)
+        print('WARNING: creating adjecency matrix at random! Using 16 channels, change this for the actual run!!!!')
+        adj_mx = eeg_util.generate_rand_adj(0.1*(index+1), N=16)
     elif args.adj_type == 'er':
-        adj_mx = nx.to_numpy_array(nx.erdos_renyi_graph(20, 0.1*(index+1)))
+        print('WARNING: creating adjecency matrix using ER! Using 16 channels, change this for the actual run!!!!')
+        adj_mx = nx.to_numpy_array(nx.erdos_renyi_graph(16, 0.1*(index+1)))
     else:
         adj_mx = load_eeg_adj(args.adj_file, args.adj_type)
     adjs.append(adj_mx)
@@ -203,12 +259,13 @@ def chose_model(args, adjs):
         pe = True  # # 设置的是双塔中 score=pe score=channel默认没有pe
         mask = True  # 设置的是双塔中 score=input的mask score=channel默认没有mask
 
-        inputs = 34
+        inputs = 40
         channels = 20
         outputs = args.predict_class_num  # 分类类别
         hz = args.feature_len
         model = Transformer(d_model=models, d_input=inputs, d_channel=channels, d_hz = hz, d_output=outputs, d_hidden=hiddens,
                         q=q, v=v, h=h, N=N, dropout=dropout, pe=pe, mask=mask, device=DEVICE)
+
     elif args.task == 'gnnnet':
         model = DCRNNModel_classification(
         args, adjs, adjs[0].shape[0], args.predict_class_num, args.feature_len, device='cuda')
@@ -232,8 +289,8 @@ def init_trainer(model, args):
     
     lr_sched = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_adjust)
     
-    c={0: 1224, 1: 389, 2: 245, 3: 66, 4: 42, 5: 35, 6: 32}
-    w = np.array([c[i] for i in range(7)])
+    c = {0:452, 1:449, 2:406}
+    w = np.array([c[i] for i in range(3)])
     m = np.median(w)
     total = np.sum(w)
     weights = None
@@ -350,8 +407,13 @@ def train_eeg(args, datasets, index=0):
     print('best_epoch:', best_index)
 
     test_model = chose_model(args, adjs)
-    test_model.load_state_dict(torch.load(model_save_path))
     test_model.cuda()
+    with torch.no_grad():
+        dummy_input = torch.randn(1, 126, 16, 40).cuda()
+        _ = test_model(dummy_input)
+
+    test_model.load_state_dict(torch.load(model_save_path), strict=False)
+
     trainer.model = test_model
     if args.lgg:
         print('after load best model adj_fix', trainer.model.LGG.adj_fix[0])
@@ -456,6 +518,8 @@ def multi_train(args, tags="", runs=10):
     test_loss = []
     test_acc = []
     xs, ys = load_tuh_data(args)
+    print(len(xs))
+    print(xs[0].shape)
     normalize_seizure_features(xs)
     datasets = generate_dataloader_seizure(xs,ys,args)
     
@@ -515,6 +579,31 @@ if __name__ == "__main__":
     np.random.seed(args.seed)
     random.seed(args.seed)
     torch.manual_seed(args.seed)
+    
+    
+    if args.dataset == 'TUH':
+        seizure_type_data = collections.namedtuple('seizure_type_data', ['segment_id','seizure_type', 'data'])
+
+        # NOTE: FIXED, Order cannot be changed!!!!!!!!!
+        s_types = {'FNSZ': 1836,'GNSZ': 583, 'CPSZ': 367,'ABSZ': 99,  'TNSZ': 62, 'SPSZ': 52, 'TCSZ': 48}
+        
+        label_dict = {}
+        number_label_dict = {}
+        for i, k in enumerate(s_types.keys()):
+            label_dict[k] = i
+            number_label_dict[i] = k
+        print('labels:', label_dict)
+    
+    elif args.dataset == 'MANTIS':
+        mwl_levels = {'easy':452, 'medium':449, 'hard':406}
+        
+        label_dict = {}
+        number_label_dict = {}
+        for i, k in enumerate(mwl_levels.keys()):
+            label_dict[k] = i
+            number_label_dict[i] = k
+        print('labels:', label_dict)
+        
 
     if args.testing:
         print('Unit_test!!!!!!!!!!!!!')
@@ -539,7 +628,10 @@ if __name__ == "__main__":
         testing(args, datasets, test_model)
         
     elif args.task == 'generate_data':
-        generate_tuh_data(args, file_name="from_begin")
+        if args.dataset == 'TUH':
+            generate_tuh_data(args, file_name="")
+        elif args.dataset == 'MANTIS':
+            generate_mantis_data(args, file_name="mantis")
     else:
         dt = time.strftime('%Y%m%d', time.localtime(time.time()))
         model_used = "basic model"

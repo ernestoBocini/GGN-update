@@ -1,0 +1,106 @@
+2024-11-17 19:33:19
+labels: {'easy': 0, 'medium': 1, 'hard': 2}
+[DLOG]  ------------ Args Saved! -------------
+[DLOG]  args is : by DLOG: Namespace(seed=1992, server_tag='seizure', out_middle_features=False, debug=False, task='transformer', dataset='MANTIS', data_path='/home/ebocini/repos/mantis_data/ggn_data', adj_file='/home/ebocini/repos/GGN-update/adjs/raw_adj.npy', adj_type='er', testing=False, arg_file='None', independent=False, using_fc=False, unit_test=False, multi_train=False, focalloss=False, focal_gamma=2.0, weighted_ce='prop', dev=False, dev_size=1000, best_model_save_path='/home/ebocini/repos/GGN-update/best_models/training_transformer.pth', pre_model_path='./best_models/seed_pretrain_08021405', batch_size=32, epochs=100, lr=0.0005, lr_decay_rate=0.92, weight_decay=0.0001, dropout=0.3, clip=3, seq_length=3, predict_len=12, scheduler=False, mo=0.1, cuda=True, transpose=False, runs=1, fig_filename='/home/ebocini/repos/GGN-update/figs/training_transformer', not_using_gnn=False, gnn_name='gwn', gnn_pooling='gate', agg_type='gate', gnn_layer_num=2, gnn_hid_dim=32, gnn_out_dim=16, gnn_fin_fout='1100,550;550,128;128,128', gnn_res=False, gnn_adj_type='None', gnn_downsample_dim=0, coarsen_switch=3, using_cnn=False, gate_t=False, att=False, recur=False, fusion=False, pretrain=False, feature_len=126, gwn_out_features=32, wavelets_num=16, rnn_layer_num=2, rnn_in_channel=32, rnn=False, bidirect=True, gcn_out_features=32, rnn_hidden_len=32, max_diffusion_step=2, eeg_seq_len=250, predict_class_num=3, encoder='rnn', encoder_hid_dim=256, cut_encoder_dim=0, decoder='lgg_cnn', decoder_type='conv2d', decoder_downsample=-1, decoder_hid_dim=512, decoder_out_dim=32, predictor_num=3, predictor_hid_dim=512, em_train=False, lgg=False, lgg_time=False, lgg_warmup=5, lgg_tau=0.01, lgg_hid_dim=64, lgg_k=5, dcgru_activation='tanh')
+load seizure data, shape: (1307, 40, 16, 126) (1307,)
+WARNING: shuffling takes a long time, skip it at the moment, add it later !!!!!!!
+before trans: (1091, 40, 16, 126) (1091,) (216, 40, 16, 126) (216,)
+after trans: (1091, 126, 16, 40) (1091,) (216, 126, 16, 40) (216,)
+2
+(1091, 126, 16, 40)
+num_batch  35
+/home/ebocini/repos/GGN-update/eeg_util.py:205: UserWarning: Casting complex values to real discards the imaginary part (Triggered internally at ../aten/src/ATen/native/Copy.cpp:308.)
+  xs = torch.Tensor(xs)
+num_batch  7
+num_batch  7
+tensorboard path: ./tfboard/seizure/11_17_19_33
+WARNING: creating adjecency matrix using ER! Using 16 channels, change this for the actual run!!!!
+use device: cuda:0
+args_cuda: True
+rnn_train RNNBlock to cuda!
+weights: tensor([0.6542, 0.6565, 0.6894], device='cuda:0')
+epoch: 0
+train_loss          1.183815
+train_acc     tensor(0.3364)
+val_loss            1.099668
+val_acc       tensor(0.3102)
+dtype: object
+update best model, epoch:  0
+train_loss          1.183815
+train_acc     tensor(0.3364)
+val_loss            1.099668
+val_acc       tensor(0.3102)
+dtype: object
+update best model, epoch:  1
+train_loss          1.117699
+train_acc     tensor(0.3162)
+val_loss            1.114136
+val_acc       tensor(0.3472)
+dtype: object
+update best model, epoch:  10
+train_loss          0.027135
+train_acc         tensor(1.)
+val_loss            1.421977
+val_acc       tensor(0.3796)
+dtype: object
+update best model, epoch:  12
+train_loss          0.006089
+train_acc         tensor(1.)
+val_loss            1.601355
+val_acc       tensor(0.3843)
+dtype: object
+update best model, epoch:  13
+train_loss          0.005071
+train_acc         tensor(1.)
+val_loss            1.646115
+val_acc       tensor(0.3981)
+dtype: object
+epoch: 20
+train_loss          0.003539
+train_acc         tensor(1.)
+val_loss            1.708075
+val_acc       tensor(0.3843)
+dtype: object
+epoch: 40
+train_loss          0.056216
+train_acc     tensor(0.9982)
+val_loss            1.439141
+val_acc       tensor(0.3657)
+dtype: object
+epoch: 60
+train_loss           0.00313
+train_acc         tensor(1.)
+val_loss            1.690876
+val_acc       tensor(0.3657)
+dtype: object
+epoch: 80
+train_loss          0.003138
+train_acc         tensor(1.)
+val_loss            1.695983
+val_acc       tensor(0.3889)
+dtype: object
+update best model, epoch:  96
+train_loss          0.003082
+train_acc         tensor(1.)
+val_loss            1.694731
+val_acc       tensor(0.4028)
+dtype: object
+training: :
+best_epoch: 96
+use device: cuda:0
+/home/ebocini/repos/GGN-update/eeg_main.py:415: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  test_model.load_state_dict(torch.load(model_save_path), strict=False)
+test:
+test_acc     tensor(0.4028)
+test_loss          1.694731
+dtype: object
+['ea', 'medi', 'ha']
+Confusion: [[0.35 0.37 0.28]
+ [0.26 0.53 0.22]
+ [0.36 0.31 0.33]]
+micro f1: 0.4027777777777778, macro f1: 0.3972663139329806, weighted f1: 0.39865642759161274
+finish rnn_train!, time cost: 245.8330659866333
+type:basic model20241117,trials: 1, t loss mean/std: 1.694731/0.000000, t acc mean/std: 0.402778%/0.000000 
+
+Main running Over, total time spent: 248.98173069953918
+2024-11-17 19:37:28

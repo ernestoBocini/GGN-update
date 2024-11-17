@@ -25,12 +25,11 @@ fi
 echo "start running tuh eeg_train!"
 
 
-training_tag=training_default_ggn
+training_tag=training_gnn
 
 nohup python -u $proj_path/eeg_main.py \
 --seed=1992 \
---em_train \
---task=ggn \
+--task=gnnnet \
 --runs=1 \
 --wavelets_num=16 \
 --batch_size=32 \
@@ -57,7 +56,6 @@ nohup python -u $proj_path/eeg_main.py \
 --lgg_tau=0.01 \
 --lgg_hid_dim=64 \
 --lgg_k=5 \
---lgg \
 --gnn_pooling=gate \
 --agg_type=gate \
 --gnn_hid_dim=32 \

@@ -488,7 +488,7 @@ class Trainer:
         self.optimizer.zero_grad()
 
         # train
-        output = self.model(input_data, 'train')
+        output = self.model(input_data)
         if self.args.em_train:
             self.model.alternative_freeze_grad(epoch)
 

@@ -604,21 +604,39 @@ class DCRNNModel_nextTimePred(nn.Module):
 # <<Automated diagnosis epilepsy seizures with graph generative graph neural networks>>
 
 class DenseLayer(nn.Module):
-    def __init__(self, in_dim, hid_dim, dropout=0.5):
+    def __init__(self, in_dim, hid_dim, target_dim=2048, dropout=0.5):
         super(DenseLayer, self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_dim, hid_dim, kernel_size=(1,1), stride=1),
-            nn.BatchNorm2d(hid_dim),
-            nn.ReLU(),
-            nn.Conv2d(hid_dim, hid_dim, kernel_size=(3, 3), stride=1),
-            nn.BatchNorm2d(hid_dim),
-            nn.ReLU(),
-            nn.Dropout(dropout)
-        )
-    
-    def forward(self, x):
-        x = self.conv(x)
+        
+        self.conv1 = nn.Conv2d(in_dim, hid_dim, kernel_size=(1, 1), stride=1, padding=0)
+        self.bn1 = nn.BatchNorm2d(hid_dim)
+        self.relu1 = nn.ReLU()
+        
+        self.conv2 = nn.Conv2d(hid_dim, hid_dim, kernel_size=(3, 3), stride=1, padding=1)
+        self.bn2 = nn.BatchNorm2d(hid_dim)
+        self.relu2 = nn.ReLU()
+        
+        self.dropout = nn.Dropout(dropout)
+        
+        # Adding a pooling layer to control the spatial dimensions
+        self.pool = nn.AdaptiveAvgPool2d((2,4))  
+
+    def forward(self, x):    
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu1(x)
+        
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = self.relu2(x)
+        
+        x = self.dropout(x)
+        
+        # Apply pooling to downsample to a controlled size
+        x = self.pool(x)
+        
         return x
+
+
 
 class DenseBlock(nn.Module):
     def __init__(self, args, layer_num, in_dim, hid_dim, out_dim, kernel_size=(1, 1)):
@@ -879,16 +897,21 @@ class Transformer(Module):
                                                   device=device) for _ in range(N)])
         #         step,cha,hz
 
-        self.embedding_input = torch.nn.Linear(d_channel * d_hz, d_model)
+        self.embedding_input = torch.nn.Linear(2016, d_model)
         self.embedding_channel = torch.nn.Linear(d_input * d_hz, d_model)
-        self.embedding_hz = torch.nn.Linear(d_input * d_channel, d_model)
+        self.embedding_hz = torch.nn.Linear(640, d_model)
 
-        self.gate = torch.nn.Linear(d_model * d_input + d_model * d_channel + d_model * d_hz, 3)
-        self.output_linear = torch.nn.Linear(d_model * d_input + d_model * d_channel + d_model * d_hz, d_output)
+        # self.gate = torch.nn.Linear(d_model * d_input + d_model * d_channel + d_model * d_hz, 3)
+        self.gate = None
+
+
+        # self.output_linear = torch.nn.Linear(d_model * d_input + d_model * d_channel + d_model * d_hz, d_output)
+        self.output_linear = None
 
         self.pe = pe
         self._d_input = d_input
         self._d_model = d_model
+        self._d_output = d_output
 
     def forward(self, x, stage='test'):
         """
@@ -950,14 +973,23 @@ class Transformer(Module):
         encoding_2 = encoding_2.reshape(encoding_2.shape[0], -1)
         encoding_3 = encoding_3.reshape(encoding_3.shape[0], -1)
 
-        # gate
-        gate = F.softmax(self.gate(torch.cat([encoding_1, encoding_2, encoding_3], dim=-1)), dim=-1)
-        encoding = torch.cat([encoding_1 * gate[:, 0:1], encoding_2 * gate[:, 1:2], encoding_3 * gate[:, 2:3]], dim=-1)
+        concatenated_encoding = torch.cat([encoding_1, encoding_2, encoding_3], dim=-1)
 
-        if self.out_mid_features:
-            return encoding
+        # Dynamically initialize `gate` if not already initialized
+        if self.gate is None:
+            self.gate = torch.nn.Linear(concatenated_encoding.shape[-1], 3).to(x.device)
 
-        # 输出
+        # Dynamically initialize `output_linear` if not already initialized
+        if self.output_linear is None:
+            self.output_linear = torch.nn.Linear(concatenated_encoding.shape[-1], self._d_output).to(x.device)
+
+        gate = F.softmax(self.gate(concatenated_encoding), dim=-1)
+
+        # Apply gate to concatenated encoding to dynamically initialized output
+        encoding = torch.cat(
+            [encoding_1 * gate[:, 0:1], encoding_2 * gate[:, 1:2], encoding_3 * gate[:, 2:3]], dim=-1
+        )
+
         output = self.output_linear(encoding)
 
         del encoding
@@ -971,8 +1003,9 @@ class Transformer(Module):
 
         return output
 
+
         # return output, encoding, score_input, score_channel, input_to_gather, channel_to_gather, gate
-        
+
         
 """
 Graph attention network implementation similar to https://arxiv.org/abs/1710.10903.
