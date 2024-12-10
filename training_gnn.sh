@@ -25,24 +25,24 @@ fi
 echo "start running tuh eeg_train!"
 
 
-training_tag=training_easy_v_medium_v_hard_loocv_gnn
+training_tag=training_baseline_gnn_2s
 task=gnnnet
 
 nohup python -u $proj_path/eeg_main.py \
 --seed=1992 \
 --task=gnnnet \
 --runs=1 \
---wavelets_num=31 \
+--wavelets_num=32 \
 --batch_size=32 \
---epochs=50 \
+--epochs=25 \
 --weighted_ce=prop \
 --lr=0.0005 \
---dropout=0.3 \
---predict_class_num=3 \
+--dropout=0.5 \
+--predict_class_num=2 \
 --server_tag=seizure \
---data_path=$root_path/ggn_data_loocv \
---dataset=EASY_V_MEDIUM_V_HARD \
---adj_file=$proj_path/adjs/A_combined.npy \
+--data_path=$root_path/ggn_data_loocv_2s \
+--dataset=BASELINE \
+--adj_file=$proj_path/adjs/A_combined_mantis_32.npy \
 --adj_type=origin \
 --feature_len=126 \
 --cuda \

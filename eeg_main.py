@@ -1315,9 +1315,9 @@ def init_trainer(model, mwl_levels, args):
 
 def train_eeg(args, datasets, mwl_levels, subject, index=0):
     # SummaryWriter
-    
+    window_len = int(re.findall("\d+", args.data_path)[0])
     wandb.init(
-        project=f"mwl-{args.dataset}-{args.task}",  # Set your wandb project name
+        project=f"mwl-{args.dataset}-{args.task}-{window_len}",  # Set your wandb project name
         config={
             "learning_rate": args.lr,
             "batch_size": args.batch_size,
