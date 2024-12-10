@@ -26,6 +26,76 @@ def cal_cnn_outlen(modules, in_len, height=True):
             in_len = conv_l                
     return conv_l
 
+# class CNN2d(nn.Module):
+#     def __init__(self, in_dim, hid_dim, out_dim, width, height, kernel=(3, 3), stride=1, layers=2, dropout=0.6, pooling=False):
+#         super(CNN2d, self).__init__()
+#         self.dropout = dropout
+#         self.pooling = pooling
+#         self.out_dim = out_dim  # Store out_dim as an instance variable
+#         b1_dim = int(hid_dim / 2)
+
+#         self.b1 = self.cnn_block(in_dim, b1_dim)
+#         if pooling:
+#             self.pool1 = nn.MaxPool2d((3, 3), 2)
+
+#         self.bx = nn.ModuleList()
+#         for _ in range(layers - 2):
+#             self.bx.append(self.cnn_block(b1_dim, hid_dim, kernel, stride))
+
+#         self.bn = self.cnn_block(hid_dim, b1_dim, kernel, stride)
+
+#         if pooling:
+#             self.pool2 = nn.AvgPool2d((2, 2), 3)
+
+#         # Use a hook to capture the output shape dynamically
+#         self.flatten_input_size = None
+#         self.l1 = None  # Delay Linear initialization
+#         self.bn.register_forward_hook(self._capture_flatten_input_size)
+
+#     def _capture_flatten_input_size(self, module, input, output):
+#         """Capture the size of the output from the last CNN layer before flattening."""
+#         if self.flatten_input_size is None:
+#             self.flatten_input_size = output.view(output.size(0), -1).size(1)
+#             # Use self.out_dim here
+#             self.l1 = nn.Linear(self.flatten_input_size, self.out_dim).to(output.device)
+
+#     def cnn_block(self, in_dim, out_dim, kernel=(3, 3), stride=1):
+#         block = nn.Sequential(
+#             nn.Conv2d(in_dim, out_dim, kernel_size=(1, 1)),
+#             nn.ReLU(),
+#             nn.Conv2d(out_dim, out_dim, kernel_size=kernel, stride=stride),
+#             nn.ReLU(),
+#             nn.BatchNorm2d(out_dim),
+#             nn.Dropout(self.dropout)
+#         )
+#         return block
+
+#     def forward(self, x):
+#         """Main forward pass for CNN2d."""
+#         DLog.debug('conv2d in', x.shape)
+#         print(f"Input shape before CNN2d: {x.shape}")
+#         x = self.b1(x)
+#         print(f"Shape after b1: {x.shape}")
+#         if self.pooling and x.size(-1) > 2 and x.size(-2) > 2:
+#             x = self.pool1(x)
+#         print(f"Shape after pool 1]: {x.shape}")
+#         for b in self.bx:
+#             x = b(x)
+#             print(f"Shape after bx[{b}]: {x.shape}")
+
+#         x = self.bn(x)
+#         print(f"Shape after bn: {x.shape}")
+
+#         if self.pooling and x.size(-1) > 2 and x.size(-2) > 2:
+#             x = self.pool2(x)
+#         print(f"Shape after pool 2]: {x.shape}")
+
+#         # Ensure Linear is initialized before using it
+#         assert self.l1 is not None, "Linear layer 'l1' should be initialized by the forward hook."
+#         x = self.l1(torch.flatten(x, start_dim=1))
+#         return x
+
+
 class CNN2d(nn.Module):
     def __init__(self, in_dim, hid_dim, out_dim, width, height, kernel=(3, 3), stride=1, layers=2, dropout=0.6, pooling=False):
         super(CNN2d, self).__init__()
@@ -34,18 +104,18 @@ class CNN2d(nn.Module):
         self.out_dim = out_dim  # Store out_dim as an instance variable
         b1_dim = int(hid_dim / 2)
 
-        self.b1 = self.cnn_block(in_dim, b1_dim)
+        self.b1 = self.cnn_block(in_dim, b1_dim, kernel=kernel, stride=stride)
         if pooling:
-            self.pool1 = nn.MaxPool2d((3, 3), 2)
+            self.pool1 = nn.MaxPool2d((3, 3), stride=2)
 
         self.bx = nn.ModuleList()
         for _ in range(layers - 2):
-            self.bx.append(self.cnn_block(b1_dim, hid_dim, kernel, stride))
+            self.bx.append(self.cnn_block(b1_dim, hid_dim, kernel=kernel, stride=stride))
 
-        self.bn = self.cnn_block(hid_dim, b1_dim, kernel, stride)
+        self.bn = self.cnn_block(hid_dim, b1_dim, kernel=kernel, stride=stride)
 
         if pooling:
-            self.pool2 = nn.AvgPool2d((2, 2), 3)
+            self.pool2 = nn.AvgPool2d((2, 2), stride=2)
 
         # Use a hook to capture the output shape dynamically
         self.flatten_input_size = None
@@ -63,7 +133,7 @@ class CNN2d(nn.Module):
         block = nn.Sequential(
             nn.Conv2d(in_dim, out_dim, kernel_size=(1, 1)),
             nn.ReLU(),
-            nn.Conv2d(out_dim, out_dim, kernel_size=kernel, stride=stride),
+            nn.Conv2d(out_dim, out_dim, kernel_size=kernel, stride=stride, padding=1),  # Add padding
             nn.ReLU(),
             nn.BatchNorm2d(out_dim),
             nn.Dropout(self.dropout)
@@ -74,14 +144,14 @@ class CNN2d(nn.Module):
         """Main forward pass for CNN2d."""
         DLog.debug('conv2d in', x.shape)
         x = self.b1(x)
-        if self.pooling:
+        # Dynamic pooling (pool only if dimensions are sufficient)
+        if self.pooling and x.size(-1) > 2 and x.size(-2) > 2:
             x = self.pool1(x)
         for b in self.bx:
             x = b(x)
         x = self.bn(x)
-        if self.pooling:
+        if self.pooling and x.size(-1) > 2 and x.size(-2) > 2:
             x = self.pool2(x)
-
         # Ensure Linear is initialized before using it
         assert self.l1 is not None, "Linear layer 'l1' should be initialized by the forward hook."
         x = self.l1(torch.flatten(x, start_dim=1))

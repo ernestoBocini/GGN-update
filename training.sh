@@ -1,10 +1,10 @@
 #!/bin/bash
 echo "------------ start --------"
-root_path=/home/ebocini/repos/mantis_data
+root_path=/home/ebocini/repos/DATASETS/STEW_Dataset
 proj_path=/home/ebocini/repos/GGN-update
 
 k=$1
-if [ ! -n "$k" ];then
+if [ ! -n "$k" ]; then
     k="train"
 fi
 
@@ -21,29 +21,30 @@ if [ $k = "kill" ]; then
     exit 1
 fi
 
-# TUH:
 echo "start running tuh eeg_train!"
 
+training_tag=training_default_ggn_stew_loocv
+task=ggn
 
-training_tag=training_default_ggn
+# Set the environment variable to specify the GPU
+export CUDA_VISIBLE_DEVICES=0
 
 nohup python -u $proj_path/eeg_main.py \
 --seed=1992 \
---em_train \
---task=ggn \
+--task=$task \
 --runs=1 \
---wavelets_num=16 \
+--wavelets_num=14 \
 --batch_size=32 \
---epochs=100 \
+--epochs=50 \
 --weighted_ce=prop \
---lr=0.0005 \
---dropout=0.3 \
---predict_class_num=3 \
+--lr=0.00005 \
+--dropout=0.5 \
+--predict_class_num=2 \
 --server_tag=seizure \
---data_path=$root_path/ggn_data \
---dataset=MANTIS \
---adj_file=$proj_path/adjs/raw_adj.npy \
---adj_type=er \
+--data_path=$root_path/ggn_data_loocv \
+--dataset=STEW \
+--adj_file=$proj_path/adjs/A_combined_stew.npy \
+--adj_type=origin \
 --feature_len=126 \
 --cuda \
 --encoder=rnn \
@@ -65,7 +66,7 @@ nohup python -u $proj_path/eeg_main.py \
 --gnn_layer_num=2 \
 --max_diffusion_step=2 \
 --fig_filename=$proj_path/figs/$training_tag \
---best_model_save_path=$proj_path/best_models/$training_tag.pth \
+--best_model_save_path=$proj_path/best_models/$task/$training_tag.pth \
 > $proj_path/logs/$training_tag.log 2>&1 &
 
 echo "check log at $proj_path/logs/$training_tag.log"

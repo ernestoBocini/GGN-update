@@ -897,7 +897,7 @@ class Transformer(Module):
                                                   device=device) for _ in range(N)])
         #         step,cha,hz
 
-        self.embedding_input = torch.nn.Linear(2016, d_model)
+        self.embedding_input = torch.nn.Linear(1764, d_model)
         self.embedding_channel = torch.nn.Linear(d_input * d_hz, d_model)
         self.embedding_hz = torch.nn.Linear(640, d_model)
 
@@ -933,36 +933,62 @@ class Transformer(Module):
         input_to_gather = encoding_1
 
         if self.pe:
-            pe = torch.ones_like(encoding_1[0])
-            position = torch.arange(0, self._d_input).unsqueeze(-1)
-            temp = torch.Tensor(range(0, self._d_model, 2))
+            batch_size, seq_len, _ = encoding_1.shape  # Dynamically get the size
+            pe = torch.zeros(seq_len, self._d_model, device=encoding_1.device)
+            position = torch.arange(0, seq_len, device=encoding_1.device).unsqueeze(-1)  # Match seq_len dynamically
+            temp = torch.arange(0, self._d_model, 2, device=encoding_1.device).float()
             temp = temp * -(math.log(10000) / self._d_model)
             temp = torch.exp(temp).unsqueeze(0)
-            temp = torch.matmul(position.float(), temp)  # shape:[input, d_model/2]
+            temp = position.float() @ temp  # Shape: [seq_len, d_model/2]
             pe[:, 0::2] = torch.sin(temp)
             pe[:, 1::2] = torch.cos(temp)
+            encoding_1 = encoding_1 + pe.unsqueeze(0)  # Add positional encoding, with batch dimension
 
-            encoding_1 = encoding_1 + pe
         # 样本 时间 通道 赫兹
         for encoder in self.encoder_list_1:
             encoding_1, score_input = encoder(encoding_1, stage)
 
         # channel-wise
         # score矩阵为channel 默认不加mask和pe
-        channel_x = x
-        channel_x = channel_x.transpose(2, 1)
-        channel_x = channel_x.reshape(channel_x.shape[0], channel_x.shape[1], channel_x.shape[2] * channel_x.shape[3])
+        # channel_x = x
+        # channel_x = channel_x.transpose(2, 1)
+        # channel_x = channel_x.reshape(channel_x.shape[0], channel_x.shape[1], channel_x.shape[2] * channel_x.shape[3])
+        # encoding_2 = self.embedding_channel(channel_x)
+        
+        channel_x = x.transpose(2, 1)
+        channel_x = channel_x.reshape(channel_x.shape[0], channel_x.shape[1], -1)  # Flatten the last two dimensions
+
+        # Dynamically initialize embedding_channel if needed
+        if not hasattr(self, "embedding_channel_initialized") or not self.embedding_channel_initialized:
+            input_size = channel_x.shape[2]  # Dynamically determine input size
+            self.embedding_channel = torch.nn.Linear(input_size, self._d_model).to(x.device)
+            self.embedding_channel_initialized = True
+
         encoding_2 = self.embedding_channel(channel_x)
+
         channel_to_gather = encoding_2
 
         for encoder in self.encoder_list_2:
             encoding_2, score_channel = encoder(encoding_2, stage)
 
         # hz-wise
-        hz_x = x
-        hz_x = hz_x.transpose(3, 1)
-        hz_x = hz_x.reshape(hz_x.shape[0], hz_x.shape[1], hz_x.shape[2] * hz_x.shape[3])
+        # hz_x = x
+        # hz_x = hz_x.transpose(3, 1)
+        # hz_x = hz_x.reshape(hz_x.shape[0], hz_x.shape[1], hz_x.shape[2] * hz_x.shape[3])
+        # encoding_3 = self.embedding_hz(hz_x)
+        
+        hz_x = x.transpose(3, 1)
+        hz_x = hz_x.reshape(hz_x.shape[0], hz_x.shape[1], -1)  # Flatten the last two dimensions
+
+        # Dynamically initialize embedding_hz if needed
+        if not hasattr(self, "embedding_hz_initialized") or not self.embedding_hz_initialized:
+            input_size = hz_x.shape[2]  # Dynamically determine input size
+            self.embedding_hz = torch.nn.Linear(input_size, self._d_model).to(x.device)
+            self.embedding_hz_initialized = True
+
         encoding_3 = self.embedding_hz(hz_x)
+
+
         channel_to_gather = encoding_3
 
         for encoder in self.encoder_list_3:

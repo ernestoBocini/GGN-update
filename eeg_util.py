@@ -30,6 +30,8 @@ def get_common_args():
     parser.add_argument('--adj_type', type=str, default='scalap', help='adj type', choices=ADJ_CHOICES)
 
     # EEG specified:
+    parser.add_argument('--testing_type', type=str, default='loocv', choices=['loocv', 'default', 'custom'],
+                        help="testing mode: 'loocv' for leave-one-out cross-validation, 'default' for standard split, 'custom' for user-defined testing.")
     parser.add_argument('--testing', action='store_true', help='testing')
     parser.add_argument('--arg_file', type=str, default='None', help='chose saved arg file')
     parser.add_argument('--independent', action='store_true', help='subject independent')
@@ -137,6 +139,10 @@ def get_common_args():
 
     # NOTE: DCRNN baseline:
     parser.add_argument('--dcgru_activation', type=str, default='tanh', help='dcgru_activation')
+
+    # Computational node (multi gpus platforms)
+    # parser.add_argument('--gpu', type=int, default=0, help="GPU index to use (default: 0)")
+    
 
     return parser
 

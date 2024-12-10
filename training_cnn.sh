@@ -1,6 +1,5 @@
 #!/bin/bash
 echo "------------ start --------"
-# root_path=/home/ebocini/repos/mantis_data
 root_path=/home/ebocini/repos/DATASETS/STEW_Dataset
 proj_path=/home/ebocini/repos/GGN-update
 
@@ -26,21 +25,22 @@ fi
 echo "start running tuh eeg_train!"
 
 
-training_tag=training_stew_transformer_loocv
+training_tag=training_stew_loocv_cnn
+task=cnnnet
 
 nohup python -u $proj_path/eeg_main.py \
 --seed=1992 \
---task=transformer \
+--task=$task \
 --runs=1 \
 --wavelets_num=14 \
 --batch_size=32 \
 --epochs=50 \
 --weighted_ce=prop \
---lr=0.0005 \
+--lr=0.00005 \
 --dropout=0.5 \
 --predict_class_num=2 \
 --server_tag=seizure \
---data_path=$root_path/ggn_data_loocv_5s \
+--data_path=$root_path/ggn_data_loocv \
 --dataset=STEW \
 --adj_file=$proj_path/adjs/A_combined_stew.npy \
 --adj_type=origin \
@@ -64,7 +64,7 @@ nohup python -u $proj_path/eeg_main.py \
 --gnn_layer_num=2 \
 --max_diffusion_step=2 \
 --fig_filename=$proj_path/figs/$training_tag \
---best_model_save_path=$proj_path/best_models/$training_tag.pth \
+--best_model_save_path=$proj_path/best_models/$task/$training_tag.pth \
 > $proj_path/logs/$training_tag.log 2>&1 &
 
 echo "check log at $proj_path/logs/$training_tag.log"
