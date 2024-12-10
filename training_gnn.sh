@@ -34,7 +34,7 @@ nohup python -u $proj_path/eeg_main.py \
 --runs=1 \
 --wavelets_num=32 \
 --batch_size=32 \
---epochs=25 \
+--epochs=50 \
 --weighted_ce=prop \
 --lr=0.0005 \
 --dropout=0.5 \
