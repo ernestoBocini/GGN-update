@@ -1359,7 +1359,7 @@ def train_eeg(args, datasets, mwl_levels, subject, index=0):
     # add scheduler.
     trainer = init_trainer(model, mwl_levels, args)
     
-    best_val_loss= np.inf()
+    best_val_loss= np.inf
     best_unchanged_threshold = 100  # accumulated epochs of best val_mae unchanged
     best_count = 0
     best_index = -1
