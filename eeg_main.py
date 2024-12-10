@@ -1421,7 +1421,7 @@ def train_eeg(args, datasets, mwl_levels, subject, index=0):
         writer.add_scalars(f'epoch/acc', {'train': m['train_acc'], 'val': m['val_acc']}, e)
 
         train_val_metrics.append(m)
-        if m['val_loss'] >= best_val_loss:
+        if m['val_loss'] <= best_val_loss:
             best_val_loss = m['val_loss']
             best_count = 0
             print("update best model, epoch: ", e)
@@ -1443,7 +1443,7 @@ def train_eeg(args, datasets, mwl_levels, subject, index=0):
     test_model = chose_model(args, adjs)
     test_model.cuda()
     with torch.no_grad():
-        dummy_input = torch.randn(1, 126, 14, 5).cuda() # torch.randn(1, 126, 31, 30).cuda()
+        dummy_input = torch.randn(1, 126, 32, 2).cuda() # torch.randn(1, 126, 31, 30).cuda()
         _ = test_model(dummy_input)
 
     test_model.load_state_dict(torch.load(model_save_path), strict=False)
