@@ -25,7 +25,7 @@ fi
 echo "start running tuh eeg_train!"
 
 
-training_tag=training_baseline_gnn_5s
+training_tag=training_easy_v_med_v_hard_gnn_5s
 task=gnnnet
 
 nohup python -u $proj_path/eeg_main.py \
@@ -38,10 +38,10 @@ nohup python -u $proj_path/eeg_main.py \
 --weighted_ce=prop \
 --lr=0.0005 \
 --dropout=0.5 \
---predict_class_num=2 \
+--predict_class_num=3 \
 --server_tag=seizure \
 --data_path=$root_path/ggn_data_loocv_5s \
---dataset=BASELINE \
+--dataset=EASY_V_MEDIUM_V_HARD \
 --adj_file=$proj_path/adjs/A_combined_mantis_32.npy \
 --adj_type=origin \
 --feature_len=126 \
