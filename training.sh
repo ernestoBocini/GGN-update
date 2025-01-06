@@ -23,7 +23,7 @@ fi
 
 echo "start running tuh eeg_train!"
 
-training_tag=training_default_ggn_BASELINE
+training_tag=training_default_ggn_BASELINE_30
 task=ggn
 
 # Set the environment variable to specify the GPU
@@ -34,8 +34,8 @@ nohup python -u $proj_path/eeg_main.py \
 --task=$task \
 --runs=1 \
 --wavelets_num=31 \
---batch_size=256 \
---epochs=50 \
+--batch_size=64 \
+--epochs=15 \
 --weighted_ce=prop \
 --lr=0.001 \
 --dropout=0.5 \

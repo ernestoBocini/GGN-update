@@ -387,11 +387,6 @@ def train_eeg(args, datasets, mwl_levels, subject, index=0):
     start_time = time.time()
     basedir, file_tag = os.path.split(args.best_model_save_path)
     os.makedirs(basedir, exist_ok=True)
-    print("#####################33333")
-    print(basedir)
-    print(file_tag)
-    print(os.path.join(basedir, f'{index}_{file_tag}'))
-    print("#####################33333")
     model_save_path = os.path.join(basedir, f'{index}_{file_tag}')
     
     for e in range(args.epochs):
@@ -413,12 +408,6 @@ def train_eeg(args, datasets, mwl_levels, subject, index=0):
             val_preds.append(preds)
 
         # cal metrics as a whole:
-        # reshape:
-        print('###################################')
-        print(len(train_loss), len(train_preds), len(val_loss), len(val_preds))
-        print(train_preds[0].shape)
-        # print(val_preds.shape)
-        print('###################################')
         train_preds = torch.cat(train_preds, dim=0)
         val_preds = torch.cat(val_preds, dim=0)
         
@@ -473,7 +462,7 @@ def train_eeg(args, datasets, mwl_levels, subject, index=0):
     test_model = chose_model(args, adjs)
     test_model.cuda()
     with torch.no_grad():
-        dummy_input = torch.randn(1, 126, 32, 2).cuda() # torch.randn(1, 126, 31, 30).cuda()
+        dummy_input = torch.randn(1, 126, 31, 30).cuda() # torch.randn(1, 126, 31, 30).cuda()
         _ = test_model(dummy_input)
 
     test_model.load_state_dict(torch.load(model_save_path), strict=False)
