@@ -1,7 +1,7 @@
 #!/bin/bash
 echo "------------ start --------"
-root_path=/home/ebocini/repos/DATASETS/STEW_Dataset
-proj_path=/home/ebocini/repos/GGN-update
+root_path=/home/ebocini/hdd/mantis_data 
+proj_path=/home/ebocini/hdd/GGN-update
 
 k=$1
 if [ ! -n "$k" ]; then
@@ -9,21 +9,21 @@ if [ ! -n "$k" ]; then
 fi
 
 echo $k
-pid=$(ps -ef | grep seizure | grep -v grep | awk '{print $2}')
+pid=$(ps -ef | grep mwlmantis | grep -v grep | awk '{print $2}')
 if [ -n "$pid" ]; then
-    echo "running seizure: $pid" 
+    echo "running mwlmantis: $pid" 
     kill -9 $pid
     echo "killed!"
 fi
 
 if [ $k = "kill" ]; then
-    echo "only kill seizure process"
+    echo "only kill mwlmantis process"
     exit 1
 fi
 
 echo "start running tuh eeg_train!"
 
-training_tag=training_default_ggn_stew_loocv
+training_tag=training_default_ggn_BASELINE
 task=ggn
 
 # Set the environment variable to specify the GPU
@@ -33,17 +33,17 @@ nohup python -u $proj_path/eeg_main.py \
 --seed=1992 \
 --task=$task \
 --runs=1 \
---wavelets_num=14 \
---batch_size=32 \
+--wavelets_num=31 \
+--batch_size=256 \
 --epochs=50 \
 --weighted_ce=prop \
---lr=0.00005 \
+--lr=0.001 \
 --dropout=0.5 \
 --predict_class_num=2 \
---server_tag=seizure \
---data_path=$root_path/ggn_data_loocv \
---dataset=STEW \
---adj_file=$proj_path/adjs/A_combined_stew.npy \
+--server_tag=mwlmantis \
+--data_path=$root_path/ggn_data_loocv_30s \
+--dataset=BASELINE \
+--adj_file=$proj_path/adjs/A_combined_mantis_31.npy \
 --adj_type=origin \
 --feature_len=126 \
 --cuda \

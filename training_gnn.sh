@@ -9,15 +9,15 @@ if [ ! -n "$k" ];then
 fi
 
 echo $k
-pid=$(ps -ef | grep seizure | grep -v grep | awk '{print $2}')
+pid=$(ps -ef | grep mwlmantis | grep -v grep | awk '{print $2}')
 if [ -n "$pid" ]; then
-    echo "running seizure: $pid"
+    echo "running mwlmantis: $pid"
     kill -9 $pid
     echo "killed!"
 fi
 
 if [ $k = "kill" ]; then
-    echo "only kill seizure process"
+    echo "only kill mwlmantis process"
     exit 1
 fi
 
@@ -30,7 +30,7 @@ task=gnnnet
 
 nohup python -u $proj_path/eeg_main.py \
 --seed=1992 \
---task=gnnnet \
+--task=$task \
 --runs=1 \
 --wavelets_num=32 \
 --batch_size=256 \
@@ -39,7 +39,7 @@ nohup python -u $proj_path/eeg_main.py \
 --lr=0.0005 \
 --dropout=0.5 \
 --predict_class_num=2 \
---server_tag=seizure \
+--server_tag=mwlmantis \
 --data_path=$root_path/ggn_data_loocv_2s \
 --dataset=BASELINE \
 --adj_file=$proj_path/adjs/A_combined_mantis_32.npy \
