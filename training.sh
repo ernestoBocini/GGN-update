@@ -39,7 +39,7 @@ nohup python -u $proj_path/eeg_main.py \
 --batch_size=32 \
 --epochs=20 \
 --weighted_ce=prop \
---lr=0.001 \
+--lr=0.0001 \
 --dropout=0.3 \
 --predict_class_num=3 \
 --server_tag=mwlmantis \
