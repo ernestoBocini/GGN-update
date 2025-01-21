@@ -186,7 +186,7 @@ def normalize(data, fill_zeroes=True):
 
 
 class SeqDataLoader(object):
-    def __init__(self, xs, ys, batch_size, cuda=False, pad_with_last_sample=False):
+    def __init__(self, xs, ys, batch_size, cuda=False, pad_with_last_sample=True):
         """
         :param xs:
         :param ys:
@@ -236,6 +236,7 @@ class SeqDataLoader(object):
                 self.current_ind += 1
 
         return _wrapper()
+
 
 def norm(tensor_data, dim=0):
     mu = tensor_data.mean(axis=dim, keepdim=True)
@@ -497,7 +498,7 @@ class Trainer:
         output = self.model(input_data)
         if self.args.em_train:
             self.model.alternative_freeze_grad(epoch)
-
+        output = output.squeeze()
         output = output.squeeze()
         loss = calc_metrics_eeg(output, target, self.criterion)
         loss.backward(retain_graph=True)
@@ -508,6 +509,7 @@ class Trainer:
         self.model.eval()
 
         output = self.model(input_data)  # [batch_size,seq_length,num_nodes]
+        output = output.squeeze()
         output = output.squeeze()
         loss = calc_metrics_eeg(output, target, self.criterion)
         return loss.item(), output.detach()

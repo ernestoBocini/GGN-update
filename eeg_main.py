@@ -60,7 +60,6 @@ def load_mantis_data(args, feature_name=""):
         # Default train-test split
         feature = np.load(os.path.join(args.data_path, f"mwl_x_{feature_name}.npy"))
         label = np.load(os.path.join(args.data_path, f"mwl_y_{feature_name}.npy"))
-        print('load seizure data, shape:', feature.shape, label.shape)
 
         label_dict = {}
         for i, l in enumerate(label):
@@ -213,12 +212,17 @@ def generate_dataloader_seizure(features, labels, args):
     # normalize over feature dimension
 
     for i in range(len(features)):
-        datasets[cates[i] + '_loader'] = SeqDataLoader(features[i], labels[i], args.batch_size, cuda=args.cuda)
+        if cates[i] == 'test':
+            datasets[cates[i] + '_loader'] = SeqDataLoader(features[i], labels[i], args.batch_size, cuda=args.cuda, pad_with_last_sample=False) #, drop_last=True)
+            
+        else:
+            datasets[cates[i] + '_loader'] = SeqDataLoader(features[i], labels[i], args.batch_size, cuda=args.cuda, pad_with_last_sample=True) #, drop_last=False)
 
     if len(features) < 3: # take test as validation.
         datasets['val_loader'] = SeqDataLoader(features[-1], labels[-1], args.batch_size, cuda=args.cuda)
 
     return datasets
+
 
 
 def init_adjs(args, index=0):
@@ -337,7 +341,7 @@ def train_eeg(args, datasets, mwl_levels, subject, index=0):
     # SummaryWriter
     window_len = int(re.findall("\d+", args.data_path)[0])
     wandb.init(
-        project=f"mwl-{args.dataset}-{args.task}-{window_len}",  # Set your wandb project name
+        project=f"mwl-{args.dataset}-{args.task}-{args.encoder}-{window_len}",  # Set your wandb project name
         config={
             "learning_rate": args.lr,
             "batch_size": args.batch_size,
@@ -473,19 +477,26 @@ def train_eeg(args, datasets, mwl_levels, subject, index=0):
     
     test_metrics = []
     test_loss, test_preds = [], []
-
+    
 
     for input_data, target in datasets['test_loader'].get_iterator():
         loss, preds = trainer.eval(input_data, target)
+        
+        if preds.dim() == 1:
+            preds = preds.unsqueeze(0)
+            
         # add metrics
         test_loss.append(loss)
         test_preds.append(preds)
+        
     # cal metrics as a whole:
 
     # reshape:
+    # Just before concatenating test_preds
     test_preds = torch.cat(test_preds, dim=0)
     test_preds = torch.softmax(test_preds, dim=1)
-
+    print('Test preds dim: ', len(test_preds))
+    print('Test loader dim: ', len(datasets['test_loader'].ys))
     test_acc = eeg_util.calc_eeg_accuracy(test_preds, datasets['test_loader'].ys)
     
     test_loss = np.mean(test_loss)
@@ -584,7 +595,7 @@ def multi_train(args, feature_name='_nback_easy_v_med_v_hard', mwl_levels={'easy
     Use separate validation subjects in addition to test subjects.
     Save intermediate LOOCV results to a file after each fold.
     """
-    results_path = os.path.join(args.data_path, 'results', f"{feature_name}_loocv_results.pkl")
+    results_path = os.path.join(args.data_path, 'results', f"{window_len}",  f"{feature_name}", f"{args.task}", f"{feature_name}_loocv_results.pkl")
     os.makedirs(os.path.dirname(results_path), exist_ok=True)
 
     # Check if results already exist
@@ -640,14 +651,12 @@ def multi_train(args, feature_name='_nback_easy_v_med_v_hard', mwl_levels={'easy
             train_x = train_x.transpose(0, 3, 2, 1)
             val_x = val_x.transpose(0, 3, 2, 1)
             test_x = test_x.transpose(0, 3, 2, 1)
-
-            print(f"Train data shape: {train_x.shape}, Validation data shape: {val_x.shape}, Test data shape: {test_x.shape}")
-            print(f"Train label shape: {train_y.shape}, Validation label shape: {val_y.shape}, Test label shape: {test_y.shape}")
             
             # Normalize features
             normalize_seizure_features([train_x, val_x, test_x])
             # Generate dataloaders
             datasets = generate_dataloader_seizure([train_x, test_x, val_x], [train_y, test_y, val_y], args)
+            
             # Train and evaluate
             start_time = time.time()
             tr_metrics, te_metrics = train_eeg(args, datasets, mwl_levels, subject=test_subj, index=i)
@@ -726,7 +735,6 @@ def testing(args, dataloaders, test_model, batch=False):
 
     preds = torch.cat(preds, dim=0)
         
-    print('preds shape:', preds.shape)
     preds = torch.softmax(preds, dim=1)
     
     basedir, file_tag = os.path.split(args.fig_filename)

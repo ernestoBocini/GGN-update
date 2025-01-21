@@ -23,8 +23,10 @@ fi
 
 echo "start running tuh eeg_train!"
 
-training_tag=training_default_ggn_BASELINE_30
 task=ggn
+encoder=lstm
+training_tag=training_default_task_ggn_MWL_30_lstm
+
 
 # Set the environment variable to specify the GPU
 export CUDA_VISIBLE_DEVICES=0
@@ -33,21 +35,21 @@ nohup python -u $proj_path/eeg_main.py \
 --seed=1992 \
 --task=$task \
 --runs=1 \
---wavelets_num=31 \
---batch_size=64 \
---epochs=15 \
+--wavelets_num=32 \
+--batch_size=32 \
+--epochs=20 \
 --weighted_ce=prop \
 --lr=0.001 \
---dropout=0.5 \
---predict_class_num=2 \
+--dropout=0.3 \
+--predict_class_num=3 \
 --server_tag=mwlmantis \
 --data_path=$root_path/ggn_data_loocv_30s \
---dataset=BASELINE \
+--dataset=EASY_V_MEDIUM_V_HARD \
 --adj_file=$proj_path/adjs/A_combined_mantis_31.npy \
 --adj_type=origin \
 --feature_len=126 \
 --cuda \
---encoder=rnn \
+--encoder=lstm \
 --bidirect \
 --encoder_hid_dim=256 \
 --cut_encoder_dim=0 \
@@ -66,7 +68,7 @@ nohup python -u $proj_path/eeg_main.py \
 --gnn_layer_num=2 \
 --max_diffusion_step=2 \
 --fig_filename=$proj_path/figs/$training_tag \
---best_model_save_path=$proj_path/best_models/$task/$training_tag.pth \
+--best_model_save_path=$proj_path/best_models/$task/$encoder/$training_tag.pth \
 > $proj_path/logs/$training_tag.log 2>&1 &
 
 echo "check log at $proj_path/logs/$training_tag.log"
